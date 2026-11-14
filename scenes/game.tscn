@@ -1,0 +1,128 @@
+[gd_scene format=3 uid="uid://hin6ticjixg1"]
+
+[ext_resource type="Script" uid="uid://yro5ge0c5lgr" path="res://scripts/game.gd" id="1_game"]
+[ext_resource type="Script" uid="uid://cw7sbxt7ryl2c" path="res://scripts/runner.gd" id="2_runner"]
+[ext_resource type="Shader" uid="uid://0ukecqqyba1w" path="res://shaders/blur.gdshader" id="3_blur"]
+[ext_resource type="Texture2D" uid="uid://bo5fww8rdc23s" path="res://assets/placeholder.png" id="4_placeholder"]
+[ext_resource type="Texture2D" uid="uid://bfv357olix2ke" path="res://assets/player.png" id="4_trtic"]
+[ext_resource type="Texture2D" uid="uid://csegcqc28sfu2" path="res://assets/home/home.png" id="5_home"]
+[ext_resource type="Texture2D" uid="uid://bc2uu7u6grybc" path="res://assets/home/homeScene.png" id="6_home_scene"]
+[ext_resource type="Texture2D" uid="uid://bpj1t3v857ky5" path="res://assets/ui/death/deathPopUp.png" id="7_death"]
+[ext_resource type="Texture2D" uid="uid://ctjmsafo2s0er" path="res://assets/ui/death/restartDefault.png" id="8_restart_n"]
+[ext_resource type="Texture2D" uid="uid://bpja78p144pfx" path="res://assets/ui/death/restartHover.png" id="9_restart_h"]
+[ext_resource type="Texture2D" uid="uid://qmn8eguihl25" path="res://assets/ui/death/restartPressed.png" id="10_restart_p"]
+[ext_resource type="Texture2D" uid="uid://m6mylhen5met" path="res://assets/ui/back/backDefault.png" id="11_back_n"]
+[ext_resource type="Texture2D" uid="uid://cjnu4qmr1uikg" path="res://assets/ui/back/backHover.png" id="12_back_h"]
+[ext_resource type="Texture2D" uid="uid://c5mlv3q2nfwdy" path="res://assets/ui/back/backPressed.png" id="13_back_p"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_blur"]
+shader = ExtResource("3_blur")
+shader_parameter/radius = 2.5
+shader_parameter/tint = Color(0, 0, 0, 0.3)
+
+[node name="Game" type="Node2D" unique_id=871000376]
+script = ExtResource("1_game")
+
+[node name="World" type="Node2D" parent="." unique_id=830128480]
+
+[node name="Backgrounds" type="Node2D" parent="World" unique_id=2025039762]
+
+[node name="Home" type="Sprite2D" parent="World" unique_id=1897463406]
+position = Vector2(6000, 64)
+texture = ExtResource("5_home")
+centered = false
+
+[node name="Obstacles" type="Node2D" parent="World" unique_id=575901947]
+
+[node name="Player" type="Node2D" parent="World" unique_id=268575187]
+position = Vector2(72, 184)
+script = ExtResource("2_runner")
+
+[node name="Sprite2D" type="Sprite2D" parent="World/Player" unique_id=1813699644]
+texture = ExtResource("4_trtic")
+centered = false
+offset = Vector2(-8, -32)
+
+[node name="Tint" type="CanvasModulate" parent="." unique_id=397764460]
+
+[node name="Cutscene" type="CanvasLayer" parent="." unique_id=852551648]
+layer = 5
+
+[node name="Image" type="TextureRect" parent="Cutscene" unique_id=400057567]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("6_home_scene")
+expand_mode = 1
+
+[node name="Flash" type="ColorRect" parent="Cutscene" unique_id=492384720]
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 1)
+
+[node name="Character" type="TextureRect" parent="Cutscene" unique_id=1557460496]
+visible = false
+offset_left = 176.0
+offset_top = 76.0
+offset_right = 208.0
+offset_bottom = 140.0
+texture = ExtResource("4_placeholder")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Overlay" type="CanvasLayer" parent="." unique_id=1842721368]
+process_mode = 3
+layer = 10
+visible = false
+
+[node name="Blur" type="ColorRect" parent="Overlay" unique_id=2047919412]
+material = SubResource("ShaderMaterial_blur")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="DeathPopup" type="TextureRect" parent="Overlay" unique_id=1832064713]
+visible = false
+offset_left = 92.0
+offset_top = 52.0
+offset_right = 292.0
+offset_bottom = 164.0
+texture = ExtResource("7_death")
+
+[node name="RestartButton" type="TextureButton" parent="Overlay/DeathPopup" unique_id=922758903]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 76.0
+offset_right = 108.0
+offset_bottom = 100.0
+texture_normal = ExtResource("8_restart_n")
+texture_pressed = ExtResource("10_restart_p")
+texture_hover = ExtResource("9_restart_h")
+
+[node name="BackButton" type="TextureButton" parent="Overlay/DeathPopup" unique_id=712037029]
+layout_mode = 0
+offset_left = 124.0
+offset_top = 78.0
+offset_right = 188.0
+offset_bottom = 98.0
+texture_normal = ExtResource("11_back_n")
+texture_pressed = ExtResource("13_back_p")
+texture_hover = ExtResource("12_back_h")
+
+[node name="VictoryBack" type="TextureButton" parent="Overlay" unique_id=1321129759]
+visible = false
+offset_left = 160.0
+offset_top = 98.0
+offset_right = 224.0
+offset_bottom = 118.0
+texture_normal = ExtResource("11_back_n")
+texture_pressed = ExtResource("13_back_p")
+texture_hover = ExtResource("12_back_h")

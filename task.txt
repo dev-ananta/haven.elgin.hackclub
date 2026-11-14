@@ -1,0 +1,39 @@
+Menu :
+	- Background = menuBackground.png
+	- titleLogo.png
+	- Play Button (playDefault.png <-> playHover.png --> playPressed.png) --> Game		
+	- Settings Button (settingsDefault.png <-> settingsHover.png --> settingsPressed.png) --> Settings
+	- Credits Button (creditsDefault.png <-> creditsHover.png --> creditsPressed.png) --> Credits
+		
+Game :
+	Start = homeScene.png -(Screen Flashes Black 5 Times Fast with Character Centered = placeholder.png)-> timeWarp.png --> wrongPlaceBud.png --> runBud.png
+	Begin = In Random Order Loop alley.png + market.png + street.png
+	Obstacles :
+		Type 1 :
+			- carriage.png = Press Lshift or C or Down Arrow to Slide 3 pixels minimum before and Survive Under | else it kills player
+			- trash_can.png = Press Space or Up Arrow to jump and survive at least 3 pixels minimum before to survive above | else it kills player
+		Type 2 :
+			- lampPost.png = Pass & then either environment slows down or speeds up like chrome dino game dark vs light mode
+	Case Scenarios :
+		Scenario 1 - Death :
+			1. Pause Game Screen & Logic!!!
+			2. Blur Game Screen & Logic!!!
+			3. deathPopUp.png with 2 options
+				a. Restart Button (restartDefault.png <-> restartHover.png --> restartPressed.png) = Begin back at runBud.png
+				b. Back Button (backDefault.png <-> backHover.png --> backPressed.png) = Back to Menu
+		Scenario 2 - Victory :
+			1. Pause Game Screen & Logic!!!
+			2. Blur Game Screen & Logic!!!
+			3. N/A - Have Placeholder logic with Back Button but no Pop Up yet, I'll add the Pop Up later for Victory.
+Settings :
+	1. Replace Play Button, Settings Button, & Credits Button with this configuration:
+		a. Back Layer = settingsPanel.png (Off set a little to Left) + Rounded Rectangle to replace slider.png + sliderBar.png to click and hold onto to scroll
+		b. On Top of settingsPanel.png (Default) = checkbox (disabled.png or enabled.png) + text
+		c. On Top of Rounded Rectangle = Back Button (backDefault.png <-> backHover.png --> backPressed.png) = Back to Menu
+		d. On Top of settingsPanel.png (Scroll Down) = placeholder.png (will be a image of the controls)
+		
+Credits :
+	1. Replace Play Button, Settings Button, & Credits Button with this configuration:
+		a. Back Layer = creditsPanel.png (Off set a little to Left)
+		b. On Top of Back Layer (Default) = text
+		c. On Top of Rounded Rectangle = Back Button (backDefault.png <-> backHover.png --> backPressed.png) = Back to Menu

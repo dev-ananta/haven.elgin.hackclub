@@ -13,6 +13,10 @@ const PLAYER_X := 72.0
 const PLAYER_HALF_WIDTH := 6.0
 const MIN_LEAD := 3.0
 const HOME_DOOR_X := 64.0
+const MOB_REACH := 14.0
+const MOB_KNOCKBACK := 50.0
+const MOB_RECOVER := 4.0
+const LOST_HEART := Color(0.2, 0.2, 0.2, 0.6)
 
 # Constants - Preload
 const HOME_SCENE := preload("res://assets/home/homeScene.png")
@@ -75,7 +79,11 @@ class Obstacle:
 @export var run_bud_hold := 1.5
 @export var slow_tint := Color(0.62, 0.66, 0.85)
 @export var fast_tint := Color(1.0, 0.93, 0.82)
-
+@export var mob_speed := 102.0
+@export var mob_start_x := -6.0
+@export var max_lives := 3
+@export var invulnerable_time := 1.2
+@export var damage_flash_time := 0.4
 # Variables - Regular
 var state := State.CUTSCENE
 var pace := Pace.NORMAL
@@ -89,12 +97,17 @@ var level_bag: Array[int] = []
 var last_level := -1
 var obstacles: Array[Obstacle] = []
 var tint_tween: Tween
-
+var lives := 0
+var invulnerable_left := 0.0
+var damage_flash_left := 0.0
 # Variables - Load Up
 @onready var backgrounds: Node2D = $World/Backgrounds
 @onready var home: Sprite2D = $World/Home
 @onready var obstacles_root: Node2D = $World/Obstacles
-@onready var player: RunnerPlayer = $World/Player
+@onready var player = $World/Player
+@onready var mob = $World/Mob
+@onready var hearts: HBoxContainer = $Hud/Hearts
+@onready var damage_flash: ColorRect = $Hud/DamageFlash
 @onready var tint: CanvasModulate = $Tint
 @onready var cutscene: CanvasLayer = $Cutscene
 @onready var cutscene_image: TextureRect = $Cutscene/Image
@@ -102,7 +115,8 @@ var tint_tween: Tween
 @onready var character: TextureRect = $Cutscene/Character
 @onready var overlay: CanvasLayer = $Overlay
 @onready var death_popup: TextureRect = $Overlay/DeathPopup
-@onready var victory_back: TextureButton = $Overlay/VictoryBack
+@onready var victory_popup: TextureRect = $Overlay/VictoryPopup
+@onready var victory_back: TextureButton = $Overlay/VictoryPopup/VictoryBack
 
 # Functions
 func _ready() -> void: # Initialization
@@ -110,6 +124,7 @@ func _ready() -> void: # Initialization
 	$Overlay/DeathPopup/RestartButton.pressed.connect(_on_restart_pressed)
 	$Overlay/DeathPopup/BackButton.pressed.connect(_on_back_pressed)
 	victory_back.pressed.connect(_on_back_pressed)
+	_build_hearts()
 	_hide_overlay()
 	_reset_run()
 	_play_intro()
@@ -123,6 +138,8 @@ func _physics_process(delta: float) -> void: # Newton's Process
 	_update_backgrounds()
 	_spawn_obstacles()
 	_update_obstacles()
+	if state == State.RUNNING:
+		_update_mob(delta)
 	if state == State.RUNNING:
 		_update_home()
 
@@ -178,6 +195,13 @@ func _reset_run() -> void: # Reset Run Handler
 	tint.color = Color.WHITE
 	next_spawn_x = SCREEN_WIDTH + 120.0
 	player.reset()
+	player.modulate = Color.WHITE
+	lives = max_lives
+	invulnerable_left = 0.0
+	damage_flash_left = 0.0
+	damage_flash.visible = false
+	mob.reset(mob_start_x)
+	_update_hearts()
 	_update_backgrounds()
 	_update_home()
 
@@ -293,6 +317,49 @@ func _switch_pace() -> void: # Lamp Post Sequence
 	tint_tween = create_tween()
 	tint_tween.tween_property(tint, "color", fast_tint if pace == Pace.FAST else slow_tint, 0.6)
 
+func _update_mob(delta: float) -> void: # Mob Chase Logic
+	invulnerable_left = maxf(invulnerable_left - delta, 0.0)
+	damage_flash_left = maxf(damage_flash_left - delta, 0.0)
+	damage_flash.visible = damage_flash_left > 0.0
+	player.modulate.a = 0.5 if invulnerable_left > 0.0 else 1.0
+	mob.animate(delta)
+	if goal_distance - scroll < SCREEN_WIDTH:
+		mob.place(mob.screen_x - speed * delta)
+		return
+	var mob_x: float = mob.screen_x + (mob_speed - speed) * delta
+	if mob.screen_x < mob_start_x:
+		mob_x = maxf(mob_x, minf(mob.screen_x + MOB_RECOVER * delta, mob_start_x))
+	else:
+		mob_x = maxf(mob_x, mob_start_x)
+	mob.place(mob_x)
+	if invulnerable_left <= 0.0 and mob.screen_x + MOB_REACH >= PLAYER_X - PLAYER_HALF_WIDTH:
+		_lose_life()
+
+func _lose_life() -> void: # Mob Caught Player
+	lives -= 1
+	_update_hearts()
+	damage_flash_left = damage_flash_time
+	damage_flash.visible = true
+	if lives <= 0:
+		_die()
+		return
+	invulnerable_left = invulnerable_time
+	mob.place(mob_start_x - MOB_KNOCKBACK)
+
+func _build_hearts() -> void: # Heart Count From Max Lives
+	var template := hearts.get_child(0)
+	while hearts.get_child_count() < max_lives:
+		hearts.add_child(template.duplicate())
+	while hearts.get_child_count() > max_lives:
+		var extra := hearts.get_child(hearts.get_child_count() - 1)
+		hearts.remove_child(extra)
+		extra.queue_free()
+
+func _update_hearts() -> void: # Lives Display
+	for i in hearts.get_child_count():
+		var heart := hearts.get_child(i) as TextureRect
+		heart.modulate = Color.WHITE if i < lives else LOST_HEART
+
 func _update_home() -> void: # Update Home
 	var screen_x := goal_distance - scroll
 	home.position.x = round(screen_x)
@@ -304,19 +371,19 @@ func _die() -> void: # Death
 	get_tree().paused = true
 	overlay.visible = true
 	death_popup.visible = true
-	victory_back.visible = false
+	victory_popup.visible = false
 
 func _win() -> void: # Win
 	state = State.WON
 	get_tree().paused = true
 	overlay.visible = true
 	death_popup.visible = false
-	victory_back.visible = true
+	victory_popup.visible = true
 
 func _hide_overlay() -> void: # Hide Overlay
 	overlay.visible = false
 	death_popup.visible = false
-	victory_back.visible = false
+	victory_popup.visible = false
 
 func _on_restart_pressed() -> void: # Restart Game
 	_hide_overlay()

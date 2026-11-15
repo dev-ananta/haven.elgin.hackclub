@@ -1,47 +1,496 @@
 [gd_scene format=3 uid="uid://hin6ticjixg1"]
 
-[ext_resource type="Script" uid="uid://yro5ge0c5lgr" path="res://scripts/game.gd" id="1_game"]
-[ext_resource type="Script" uid="uid://cw7sbxt7ryl2c" path="res://scripts/runner.gd" id="2_runner"]
-[ext_resource type="Shader" uid="uid://0ukecqqyba1w" path="res://shaders/blur.gdshader" id="3_blur"]
-[ext_resource type="Texture2D" uid="uid://bo5fww8rdc23s" path="res://assets/placeholder.png" id="4_placeholder"]
-[ext_resource type="Texture2D" uid="uid://bfv357olix2ke" path="res://assets/player.png" id="4_trtic"]
-[ext_resource type="Texture2D" uid="uid://csegcqc28sfu2" path="res://assets/home/home.png" id="5_home"]
-[ext_resource type="Texture2D" uid="uid://bc2uu7u6grybc" path="res://assets/home/homeScene.png" id="6_home_scene"]
-[ext_resource type="Texture2D" uid="uid://bpj1t3v857ky5" path="res://assets/ui/death/deathPopUp.png" id="7_death"]
-[ext_resource type="Texture2D" uid="uid://ctjmsafo2s0er" path="res://assets/ui/death/restartDefault.png" id="8_restart_n"]
-[ext_resource type="Texture2D" uid="uid://bpja78p144pfx" path="res://assets/ui/death/restartHover.png" id="9_restart_h"]
-[ext_resource type="Texture2D" uid="uid://qmn8eguihl25" path="res://assets/ui/death/restartPressed.png" id="10_restart_p"]
-[ext_resource type="Texture2D" uid="uid://m6mylhen5met" path="res://assets/ui/back/backDefault.png" id="11_back_n"]
-[ext_resource type="Texture2D" uid="uid://cjnu4qmr1uikg" path="res://assets/ui/back/backHover.png" id="12_back_h"]
-[ext_resource type="Texture2D" uid="uid://c5mlv3q2nfwdy" path="res://assets/ui/back/backPressed.png" id="13_back_p"]
+[ext_resource type="Texture2D" uid="uid://dtnal7wfuv8e3" path="res://assets/ui/victoryPopUp.png" id="1_uwrxv"]
+
+[sub_resource type="GDScript" id="GDScript_8cj0n"]
+script/source = "extends Node2D
+
+# Enumerations
+enum State { CUTSCENE, RUNNING, DEAD, WON }
+enum Kind { CARRIAGE, TRASH_CAN, LAMP_POST }
+enum Pace { NORMAL, FAST, SLOW }
+
+# Constants
+const MENU_SCENE := \"res://scenes/menu.tscn\"
+const SCREEN_WIDTH := 384.0
+const GROUND_Y := 184.0
+const PLAYER_X := 72.0
+const PLAYER_HALF_WIDTH := 6.0
+const MIN_LEAD := 3.0
+const HOME_DOOR_X := 64.0
+
+# Constants - Preload
+const HOME_SCENE := preload(\"res://assets/home/homeScene.png\")
+const TIME_WARP := preload(\"res://assets/cutscene/timeWarp.png\")
+const WRONG_PLACE := preload(\"res://assets/cutscene/wrongPlaceBud.png\")
+const RUN_BUD := preload(\"res://assets/cutscene/runBud.png\")
+const LEVELS := [
+	preload(\"res://assets/levels/alley.png\"),
+	preload(\"res://assets/levels/market.png\"),
+	preload(\"res://assets/levels/street.png\"),
+]
+const OBSTACLES := {
+	Kind.CARRIAGE: {
+		\"texture\": preload(\"res://assets/obstacles/carriage.png\"),
+		\"hit_left\": 6.0,
+		\"hit_right\": 58.0,
+		\"weight\": 0.38,
+		\"z\": 1,
+	},
+	Kind.TRASH_CAN: {
+		\"texture\": preload(\"res://assets/obstacles/trash_can.png\"),
+		\"hit_left\": 2.0,
+		\"hit_right\": 16.0,
+		\"weight\": 0.42,
+		\"z\": 0,
+	},
+	Kind.LAMP_POST: {
+		\"texture\": preload(\"res://assets/obstacles/lampPost.png\"),
+		\"hit_left\": 0.0,
+		\"hit_right\": 14.0,
+		\"weight\": 0.2,
+		\"z\": 0,
+	},
+}
+
+# Variables
+class Obstacle:
+	# Variables - Class
+	var kind := 0
+	var node: Sprite2D
+	var world_x := 0.0
+	var hit_left := 0.0
+	var hit_right := 0.0
+	var top_height := 0.0
+	var checked := false
+	var lead_ok := false
+	var passed := false
+# Variables - To Export
+@export var base_speed := 120.0
+@export var fast_speed := 165.0
+@export var slow_speed := 95.0
+@export var speed_change_rate := 80.0
+@export var min_gap := 170.0
+@export var max_gap := 300.0
+@export var goal_distance := 6000.0
+@export var home_hold := 1.5
+@export var flash_count := 5
+@export var flash_time := 0.07
+@export var frame_hold := 2.0
+@export var run_bud_hold := 1.5
+@export var slow_tint := Color(0.62, 0.66, 0.85)
+@export var fast_tint := Color(1.0, 0.93, 0.82)
+
+# Variables - Regular
+var state := State.CUTSCENE
+var pace := Pace.NORMAL
+var scroll := 0.0
+var speed := 0.0
+var target_speed := 0.0
+var next_spawn_x := 0.0
+var bg_sprites: Array[Sprite2D] = []
+var bg_first_x := 0.0
+var level_bag: Array[int] = []
+var last_level := -1
+var obstacles: Array[Obstacle] = []
+var tint_tween: Tween
+
+# Variables - Load Up
+@onready var backgrounds: Node2D = $World/Backgrounds
+@onready var home: Sprite2D = $World/Home
+@onready var obstacles_root: Node2D = $World/Obstacles
+@onready var player = $World/Player
+@onready var tint: CanvasModulate = $Tint
+@onready var cutscene: CanvasLayer = $Cutscene
+@onready var cutscene_image: TextureRect = $Cutscene/Image
+@onready var flash: ColorRect = $Cutscene/Flash
+@onready var character: TextureRect = $Cutscene/Character
+@onready var overlay: CanvasLayer = $Overlay
+@onready var death_popup: TextureRect = $Overlay/DeathPopup
+@onready var victory_popup: TextureRect = $Overlay/VictoryPopup
+@onready var victory_back: TextureButton = $Overlay/VictoryPopup/BackButton
+
+# Functions
+func _ready() -> void: # Initialization
+	get_tree().paused = false
+	$Overlay/DeathPopup/RestartButton.pressed.connect(_on_restart_pressed)
+	$Overlay/DeathPopup/BackButton.pressed.connect(_on_back_pressed)
+	victory_back.pressed.connect(_on_back_pressed)
+	_hide_overlay()
+	_reset_run()
+	_play_intro()
+
+func _physics_process(delta: float) -> void: # Newton's Process
+	if state != State.RUNNING:
+		return
+	speed = move_toward(speed, target_speed, speed_change_rate * delta)
+	scroll += speed * delta
+	player.step(delta, scroll)
+	_update_backgrounds()
+	_spawn_obstacles()
+	_update_obstacles()
+	if state == State.RUNNING:
+		_update_home()
+
+func _play_intro() -> void: # Intro Sequence
+	state = State.CUTSCENE
+	cutscene.visible = true
+	flash.visible = false
+	character.visible = false
+	cutscene_image.texture = HOME_SCENE
+	await _wait(home_hold)
+	character.visible = true
+	for _i in flash_count:
+		flash.visible = true
+		await _wait(flash_time)
+		flash.visible = false
+		await _wait(flash_time)
+	character.visible = false
+	cutscene_image.texture = TIME_WARP
+	await _wait(frame_hold)
+	cutscene_image.texture = WRONG_PLACE
+	await _wait(frame_hold)
+	await _play_run_bud()
+
+func _play_run_bud() -> void: # Beginning Sequence
+	state = State.CUTSCENE
+	cutscene.visible = true
+	flash.visible = false
+	character.visible = false
+	cutscene_image.texture = RUN_BUD
+	await _wait(run_bud_hold)
+	cutscene.visible = false
+	state = State.RUNNING
+
+func _wait(seconds: float) -> void: # Cease
+	await get_tree().create_timer(seconds).timeout
+
+func _reset_run() -> void: # Reset Run Handler
+	for o in obstacles:
+		o.node.queue_free()
+	obstacles.clear()
+	for s in bg_sprites:
+		s.queue_free()
+	bg_sprites.clear()
+	bg_first_x = 0.0
+	level_bag.clear()
+	last_level = -1
+	scroll = 0.0
+	speed = base_speed
+	target_speed = base_speed
+	pace = Pace.NORMAL
+	if tint_tween:
+		tint_tween.kill()
+	tint.color = Color.WHITE
+	next_spawn_x = SCREEN_WIDTH + 120.0
+	player.reset()
+	_update_backgrounds()
+	_update_home()
+
+func _next_level_texture() -> Texture2D: # Next Segment Texture Logic
+	if level_bag.is_empty():
+		level_bag = [0, 1, 2]
+		level_bag.shuffle()
+		if level_bag[0] == last_level:
+			level_bag.push_back(level_bag.pop_front())
+	last_level = level_bag.pop_front()
+	return LEVELS[last_level]
+
+func _update_backgrounds() -> void: # Update Background
+	while not bg_sprites.is_empty() and bg_first_x + SCREEN_WIDTH <= scroll:
+		bg_sprites.pop_front().queue_free()
+		bg_first_x += SCREEN_WIDTH
+	while bg_first_x + bg_sprites.size() * SCREEN_WIDTH < scroll + SCREEN_WIDTH * 2.0:
+		var sprite := Sprite2D.new()
+		sprite.texture = _next_level_texture()
+		sprite.centered = false
+		backgrounds.add_child(sprite)
+		bg_sprites.append(sprite)
+	for i in bg_sprites.size():
+		bg_sprites[i].position = Vector2(round(bg_first_x + i * SCREEN_WIDTH - scroll), 0.0)
+
+func _spawn_obstacles() -> void: # Spawn Obstacle
+	while next_spawn_x < scroll + SCREEN_WIDTH + 16.0 and next_spawn_x < goal_distance - 200.0:
+		var kind := _pick_kind()
+		var obstacle := _create_obstacle(kind, next_spawn_x)
+		next_spawn_x += obstacle.node.texture.get_width() + randf_range(min_gap, max_gap)
+
+func _pick_kind() -> Kind: # Pick Kind of Obstacle
+	var roll := randf()
+	var total := 0.0
+	for kind: Kind in OBSTACLES:
+		total += OBSTACLES[kind][\"weight\"]
+		if roll <= total:
+			return kind
+	return Kind.TRASH_CAN
+
+func _create_obstacle(kind: Kind, world_x: float) -> Obstacle: # Create Obstacle
+	var def: Dictionary = OBSTACLES[kind]
+	var texture: Texture2D = def[\"texture\"]
+	var sprite := Sprite2D.new()
+	sprite.texture = texture
+	sprite.centered = false
+	sprite.z_index = def[\"z\"]
+	sprite.position = Vector2(round(world_x - scroll), GROUND_Y - texture.get_height())
+	obstacles_root.add_child(sprite)
+	var obstacle := Obstacle.new()
+	obstacle.kind = kind
+	obstacle.node = sprite
+	obstacle.world_x = world_x
+	obstacle.hit_left = def[\"hit_left\"]
+	obstacle.hit_right = def[\"hit_right\"]
+	obstacle.top_height = texture.get_height()
+	obstacles.append(obstacle)
+	return obstacle
+
+func _update_obstacles() -> void: # Update Obstacles
+	var front := PLAYER_X + PLAYER_HALF_WIDTH
+	var back := PLAYER_X - PLAYER_HALF_WIDTH
+	for i in range(obstacles.size() - 1, -1, -1):
+		var o := obstacles[i]
+		var screen_x := o.world_x - scroll
+		o.node.position.x = round(screen_x)
+		if screen_x + o.node.texture.get_width() < -16.0:
+			o.node.queue_free()
+			obstacles.remove_at(i)
+			continue
+		if o.kind == Kind.LAMP_POST:
+			if not o.passed and screen_x + o.hit_right < back:
+				o.passed = true
+				_switch_pace()
+			continue
+		var overlapping := screen_x + o.hit_left < front and screen_x + o.hit_right > back
+		if not overlapping:
+			continue
+		if not o.checked:
+			o.checked = true
+			o.lead_ok = _lead_ok(o, front)
+		if not _survives(o):
+			_die()
+			return
+
+func _lead_ok(o: Obstacle, front: float) -> bool: # Obstacle Survival Minimums
+	var obstacle_left := o.world_x + o.hit_left
+	match o.kind:
+		Kind.CARRIAGE:
+			return player.sliding and obstacle_left - (player.slide_start_scroll + front) >= MIN_LEAD
+		Kind.TRASH_CAN:
+			return not player.is_on_ground() and obstacle_left - (player.jump_start_scroll + front) >= MIN_LEAD
+	return true
+
+func _survives(o: Obstacle) -> bool: # Obstacle Survival Logic
+	match o.kind:
+		Kind.CARRIAGE:
+			return o.lead_ok and player.sliding
+		Kind.TRASH_CAN:
+			return o.lead_ok and player.height >= o.top_height - 0.5
+	return true
+
+func _switch_pace() -> void: # Lamp Post Sequence
+	if pace == Pace.NORMAL:
+		pace = Pace.FAST if randf() < 0.5 else Pace.SLOW
+	elif pace == Pace.FAST:
+		pace = Pace.SLOW
+	else:
+		pace = Pace.FAST
+	target_speed = fast_speed if pace == Pace.FAST else slow_speed
+	if tint_tween:
+		tint_tween.kill()
+	tint_tween = create_tween()
+	tint_tween.tween_property(tint, \"color\", fast_tint if pace == Pace.FAST else slow_tint, 0.6)
+
+func _update_home() -> void: # Update Home
+	var screen_x := goal_distance - scroll
+	home.position.x = round(screen_x)
+	if state == State.RUNNING and screen_x + HOME_DOOR_X <= PLAYER_X:
+		_win()
+
+func _die() -> void: # Death
+	state = State.DEAD
+	get_tree().paused = true
+	overlay.visible = true
+	death_popup.visible = true
+	victory_popup.visible = false
+
+func _win() -> void: # Win
+	state = State.WON
+	get_tree().paused = true
+	overlay.visible = true
+	death_popup.visible = false
+	victory_popup.visible = true
+	victory_back.visible = true
+
+func _hide_overlay() -> void: # Hide Overlay
+	overlay.visible = false
+	death_popup.visible = false
+	victory_popup.visible = false
+
+func _on_restart_pressed() -> void: # Restart Game
+	_hide_overlay()
+	get_tree().paused = false
+	_reset_run()
+	_play_run_bud()
+
+func _on_back_pressed() -> void: # Back to Menu
+	get_tree().paused = false
+	get_tree().change_scene_to_file(MENU_SCENE)
+"
+
+[sub_resource type="GDScript" id="GDScript_yqjtg"]
+script/source = "extends Node2D
+
+# Constants
+const GRAVITY := 700.0
+const FAST_FALL_GRAVITY := 1800.0
+const JUMP_VELOCITY := 240.0
+const STAND_SCALE := Vector2(1.0, 1.0)
+const SLIDE_SCALE := Vector2(1.4, 0.4)
+
+# Variables
+var height := 0.0
+var velocity_y := 0.0
+var sliding := false
+var jump_start_scroll := 0.0
+var slide_start_scroll := 0.0
+var ground_y := 0.0
+var base_scale := Vector2.ONE
+
+@onready var sprite: Sprite2D = $Sprite2D
+
+# Functions
+func _ready() -> void: # Initiaion Logic
+	ground_y = position.y
+	base_scale = sprite.scale
+
+func reset() -> void: # Reset Position of MC Logic
+	height = 0.0
+	velocity_y = 0.0
+	sliding = false
+	jump_start_scroll = 0.0
+	slide_start_scroll = 0.0
+	_apply_pose()
+
+func is_on_ground() -> bool: # MC Location Status Check
+	return height <= 0.0
+
+func step(delta: float, scroll: float) -> void: # Movement Logic
+	var slide_held := Input.is_action_pressed(\"slide\")
+
+	if is_on_ground() and Input.is_action_just_pressed(\"jump\"): # Jump Logic
+		sliding = false
+		velocity_y = JUMP_VELOCITY
+		height = 0.01
+		jump_start_scroll = scroll
+
+	if not is_on_ground(): # \"Landing Gears\" Logic
+		var gravity := FAST_FALL_GRAVITY if slide_held else GRAVITY
+		velocity_y -= gravity * delta
+		height += velocity_y * delta
+		if height <= 0.0:
+			height = 0.0
+			velocity_y = 0.0
+
+	if is_on_ground() and slide_held: # Slide Logic
+		if not sliding:
+			sliding = true
+			slide_start_scroll = scroll
+	else:
+		sliding = false
+
+	_apply_pose()
+
+func _apply_pose() -> void: # Standard MC <-> Sliding MC
+	position.y = round(ground_y - height)
+	sprite.scale = base_scale * (SLIDE_SCALE if sliding else STAND_SCALE)
+"
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_lnu2h"]
+load_path = "res://.godot/imported/player.png-be2216fcaabb5c62aa2466cd9a5726a8.ctex"
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_uwrxv"]
+load_path = "res://.godot/imported/home.png-fa9586788b29c1f2a424255001a530ea.ctex"
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_lbhrr"]
+load_path = "res://.godot/imported/homeScene.png-d810a2c9d6142014d4685c0feac59727.ctex"
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_7jp70"]
+load_path = "res://.godot/imported/placeholder.png-98e7930e828c35923f039562160474e1.ctex"
+
+[sub_resource type="Shader" id="Shader_iywne"]
+code = "shader_type canvas_item;
+
+uniform sampler2D screen_texture : hint_screen_texture, repeat_disable, filter_linear;
+uniform float radius : hint_range(0.0, 8.0) = 2.5;
+uniform vec4 tint : source_color = vec4(0.0, 0.0, 0.0, 0.3);
+
+void fragment() {
+	vec2 spread = SCREEN_PIXEL_SIZE * radius;
+	vec4 sum = vec4(0.0);
+	float total = 0.0;
+	for (int x = -3; x <= 3; x++) {
+		for (int y = -3; y <= 3; y++) {
+			float w = exp(-float(x * x + y * y) / 8.0);
+			sum += texture(screen_texture, SCREEN_UV + vec2(float(x), float(y)) * spread) * w;
+			total += w;
+		}
+	}
+	vec3 blurred = sum.rgb / total;
+	COLOR = vec4(mix(blurred, tint.rgb, tint.a), 1.0);
+}
+"
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_blur"]
-shader = ExtResource("3_blur")
+shader = SubResource("Shader_iywne")
 shader_parameter/radius = 2.5
 shader_parameter/tint = Color(0, 0, 0, 0.3)
 
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_p57ef"]
+load_path = "res://.godot/imported/deathPopUp.png-b9a51dc12a2a40a5dceaa5f7b1c3d02a.ctex"
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_u5sy4"]
+load_path = "res://.godot/imported/restartDefault.png-92d9f699fc7d103e1a0475422a3b77fa.ctex"
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_gee14"]
+load_path = "res://.godot/imported/restartPressed.png-d5a9be53e13a82434345184af3a011b7.ctex"
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_0tnpc"]
+load_path = "res://.godot/imported/restartHover.png-65ccf8c6b116ed555f6bd21b1d349690.ctex"
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_mxgkd"]
+load_path = "res://.godot/imported/backDefault.png-e25958194027c68361bbcd43e10ea2b1.ctex"
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_g6gyw"]
+load_path = "res://.godot/imported/backPressed.png-47e216faf9f0a02fe88f3988de3e1405.ctex"
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_3dmrc"]
+load_path = "res://.godot/imported/backHover.png-0f5e49d15ccd694d35092bb4bdd3450b.ctex"
+
 [node name="Game" type="Node2D" unique_id=871000376]
-script = ExtResource("1_game")
+script = SubResource("GDScript_8cj0n")
 
 [node name="World" type="Node2D" parent="." unique_id=830128480]
 
+[node name="Player" type="Node2D" parent="World" unique_id=268575187]
+z_index = 10
+position = Vector2(72, 184)
+script = SubResource("GDScript_yqjtg")
+
+[node name="Sprite2D" type="Sprite2D" parent="World/Player" unique_id=1813699644]
+z_index = 10
+position = Vector2(-165, -99)
+texture = SubResource("CompressedTexture2D_lnu2h")
+centered = false
+offset = Vector2(-8, -32)
+
 [node name="Backgrounds" type="Node2D" parent="World" unique_id=2025039762]
+z_index = -10
 
 [node name="Home" type="Sprite2D" parent="World" unique_id=1897463406]
 position = Vector2(6000, 64)
-texture = ExtResource("5_home")
+texture = SubResource("CompressedTexture2D_uwrxv")
 centered = false
 
 [node name="Obstacles" type="Node2D" parent="World" unique_id=575901947]
-
-[node name="Player" type="Node2D" parent="World" unique_id=268575187]
-position = Vector2(72, 184)
-script = ExtResource("2_runner")
-
-[node name="Sprite2D" type="Sprite2D" parent="World/Player" unique_id=1813699644]
-texture = ExtResource("4_trtic")
-centered = false
-offset = Vector2(-8, -32)
 
 [node name="Tint" type="CanvasModulate" parent="." unique_id=397764460]
 
@@ -52,9 +501,11 @@ layer = 5
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_left = 1.0
+offset_right = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-texture = ExtResource("6_home_scene")
+texture = SubResource("CompressedTexture2D_lbhrr")
 expand_mode = 1
 
 [node name="Flash" type="ColorRect" parent="Cutscene" unique_id=492384720]
@@ -72,7 +523,7 @@ offset_left = 176.0
 offset_top = 76.0
 offset_right = 208.0
 offset_bottom = 140.0
-texture = ExtResource("4_placeholder")
+texture = SubResource("CompressedTexture2D_7jp70")
 expand_mode = 1
 stretch_mode = 5
 
@@ -95,7 +546,7 @@ offset_left = 92.0
 offset_top = 52.0
 offset_right = 292.0
 offset_bottom = 164.0
-texture = ExtResource("7_death")
+texture = SubResource("CompressedTexture2D_p57ef")
 
 [node name="RestartButton" type="TextureButton" parent="Overlay/DeathPopup" unique_id=922758903]
 layout_mode = 0
@@ -103,9 +554,9 @@ offset_left = 12.0
 offset_top = 76.0
 offset_right = 108.0
 offset_bottom = 100.0
-texture_normal = ExtResource("8_restart_n")
-texture_pressed = ExtResource("10_restart_p")
-texture_hover = ExtResource("9_restart_h")
+texture_normal = SubResource("CompressedTexture2D_u5sy4")
+texture_pressed = SubResource("CompressedTexture2D_gee14")
+texture_hover = SubResource("CompressedTexture2D_0tnpc")
 
 [node name="BackButton" type="TextureButton" parent="Overlay/DeathPopup" unique_id=712037029]
 layout_mode = 0
@@ -113,16 +564,25 @@ offset_left = 124.0
 offset_top = 78.0
 offset_right = 188.0
 offset_bottom = 98.0
-texture_normal = ExtResource("11_back_n")
-texture_pressed = ExtResource("13_back_p")
-texture_hover = ExtResource("12_back_h")
+texture_normal = SubResource("CompressedTexture2D_mxgkd")
+texture_pressed = SubResource("CompressedTexture2D_g6gyw")
+texture_hover = SubResource("CompressedTexture2D_3dmrc")
 
-[node name="VictoryBack" type="TextureButton" parent="Overlay" unique_id=1321129759]
+[node name="VictoryPopup" type="TextureRect" parent="Overlay" unique_id=326636978]
 visible = false
-offset_left = 160.0
-offset_top = 98.0
-offset_right = 224.0
-offset_bottom = 118.0
-texture_normal = ExtResource("11_back_n")
-texture_pressed = ExtResource("13_back_p")
-texture_hover = ExtResource("12_back_h")
+offset_left = 92.0
+offset_top = 52.0
+offset_right = 292.0
+offset_bottom = 164.0
+texture = ExtResource("1_uwrxv")
+
+[node name="BackButton" type="TextureButton" parent="Overlay/VictoryPopup" unique_id=1321129759]
+visible = false
+layout_mode = 0
+offset_left = 68.0
+offset_top = 46.0
+offset_right = 132.0
+offset_bottom = 66.0
+texture_normal = SubResource("CompressedTexture2D_mxgkd")
+texture_pressed = SubResource("CompressedTexture2D_g6gyw")
+texture_hover = SubResource("CompressedTexture2D_3dmrc")

@@ -1,4 +1,3 @@
-class_name RunnerPlayer
 extends Node2D
 
 # Constants
@@ -15,12 +14,14 @@ var sliding := false
 var jump_start_scroll := 0.0
 var slide_start_scroll := 0.0
 var ground_y := 0.0
+var base_scale := Vector2.ONE
 
 @onready var sprite: Sprite2D = $Sprite2D
 
 # Functions
 func _ready() -> void: # Initiaion Logic
 	ground_y = position.y
+	base_scale = sprite.scale
 
 func reset() -> void: # Reset Position of MC Logic
 	height = 0.0
@@ -61,4 +62,4 @@ func step(delta: float, scroll: float) -> void: # Movement Logic
 
 func _apply_pose() -> void: # Standard MC <-> Sliding MC
 	position.y = round(ground_y - height)
-	sprite.scale = SLIDE_SCALE if sliding else STAND_SCALE
+	sprite.scale = base_scale * (SLIDE_SCALE if sliding else STAND_SCALE)

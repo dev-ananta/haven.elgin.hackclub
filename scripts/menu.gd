@@ -9,6 +9,7 @@ const GAME_SCENE := "res://scenes/game.tscn"
 @onready var settings_view: Control = $SettingsView
 @onready var credits_view: Control = $CreditsView
 @onready var fullscreen_toggle: TextureButton = $SettingsView/Panel/Scroll/Content/FullscreenRow/FullscreenToggle
+@onready var sound_toggle: TextureButton = $SettingsView/Panel/Scroll/Content/SoundRow/SoundToggle
 
 # Functions
 func _ready() -> void:
@@ -18,8 +19,10 @@ func _ready() -> void:
 	$MainButtons/CreditsButton.pressed.connect(_show_view.bind(credits_view))
 	$SettingsView/BackButton.pressed.connect(_show_main)
 	$CreditsView/BackButton.pressed.connect(_show_main)
-	fullscreen_toggle.button_pressed = DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
-	fullscreen_toggle.toggled.connect(_on_fullscreen_toggled)
+	fullscreen_toggle.button_pressed = Settings.fullscreen
+	fullscreen_toggle.toggled.connect(Settings.set_fullscreen)
+	sound_toggle.button_pressed = Settings.sound
+	sound_toggle.toggled.connect(Settings.set_sound)
 	_show_main()
 
 func _show_main() -> void: # Menu
@@ -38,9 +41,3 @@ func _show_view(view: Control) -> void: # Settings + Credits Handler
 
 func _on_play_pressed() -> void: # Play Game
 	get_tree().change_scene_to_file(GAME_SCENE)
-
-func _on_fullscreen_toggled(enabled: bool) -> void: # Fullscreen Handler
-	if enabled:
-		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
-	else:
-		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)

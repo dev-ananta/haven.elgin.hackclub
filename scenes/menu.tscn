@@ -1,26 +1,97 @@
 [gd_scene format=3 uid="uid://cissveu2fngji"]
 
-[ext_resource type="Script" uid="uid://c3iq3w0rn102t" path="res://scripts/menu.gd" id="1_menu"]
-[ext_resource type="Script" uid="uid://kvakxbhp38sq" path="res://scripts/rounded_scroll.gd" id="2_scroll"]
-[ext_resource type="Texture2D" uid="uid://rtliipr7fh3p" path="res://assets/ui/menu/menuBackground.png" id="3_bg"]
-[ext_resource type="Texture2D" uid="uid://b3qsklv0qfv6c" path="res://assets/ui/menu/titleLogo.png" id="4_logo"]
-[ext_resource type="Texture2D" uid="uid://cp1go2riv3pp4" path="res://assets/ui/menu/playDefault.png" id="5_play_n"]
-[ext_resource type="Texture2D" uid="uid://xsljgse06hcm" path="res://assets/ui/menu/playHover.png" id="6_play_h"]
-[ext_resource type="Texture2D" uid="uid://b1r3renhrdv05" path="res://assets/ui/menu/playPressed.png" id="7_play_p"]
-[ext_resource type="Texture2D" uid="uid://d4iwmmi1x3hds" path="res://assets/ui/menu/settingsNormal.png" id="8_set_n"]
-[ext_resource type="Texture2D" uid="uid://dyf2rvx6uhpel" path="res://assets/ui/menu/settingsHover.png" id="9_set_h"]
-[ext_resource type="Texture2D" uid="uid://cdha4x40hbrfu" path="res://assets/ui/menu/settingsPressed.png" id="10_set_p"]
-[ext_resource type="Texture2D" uid="uid://c238euhsrs6jp" path="res://assets/ui/menu/creditsDefault.png" id="11_cred_n"]
-[ext_resource type="Texture2D" uid="uid://dl2vd057urrae" path="res://assets/ui/menu/creditsHover.png" id="12_cred_h"]
-[ext_resource type="Texture2D" uid="uid://d3722a6iklxua" path="res://assets/ui/menu/creditsPressed.png" id="13_cred_p"]
-[ext_resource type="Texture2D" uid="uid://uh1o71eq7mb4" path="res://assets/ui/settings/settingsPanel.png" id="14_set_panel"]
-[ext_resource type="Texture2D" uid="uid://ejieucpv2pfm" path="res://assets/ui/credits/creditsPanel.png" id="15_cred_panel"]
-[ext_resource type="Texture2D" uid="uid://4jdcpi3ahefd" path="res://assets/ui/settings/disabled.png" id="16_off"]
-[ext_resource type="Texture2D" uid="uid://brde6hy3kuwgm" path="res://assets/ui/settings/enabled.png" id="17_on"]
-[ext_resource type="Texture2D" uid="uid://bo5fww8rdc23s" path="res://assets/placeholder.png" id="18_placeholder"]
-[ext_resource type="Texture2D" uid="uid://m6mylhen5met" path="res://assets/ui/back/backDefault.png" id="19_back_n"]
-[ext_resource type="Texture2D" uid="uid://cjnu4qmr1uikg" path="res://assets/ui/back/backHover.png" id="20_back_h"]
-[ext_resource type="Texture2D" uid="uid://c5mlv3q2nfwdy" path="res://assets/ui/back/backPressed.png" id="21_back_p"]
+[ext_resource type="Texture2D" uid="uid://ct3a3tvui1fmn" path="res://assets/controls.png" id="1_yqeox"]
+
+[sub_resource type="GDScript" id="GDScript_4h3mk"]
+script/source = "extends Control
+
+# Constants
+const GAME_SCENE := \"res://scenes/game.tscn\"
+
+# Variables
+@onready var title_logo: TextureRect = $TitleLogo
+@onready var main_buttons: VBoxContainer = $MainButtons
+@onready var settings_view: Control = $SettingsView
+@onready var credits_view: Control = $CreditsView
+@onready var fullscreen_toggle: TextureButton = $SettingsView/Panel/Scroll/Content/FullscreenRow/FullscreenToggle
+
+# Functions
+func _ready() -> void:
+	get_tree().paused = false
+	$MainButtons/PlayButton.pressed.connect(_on_play_pressed)
+	$MainButtons/SettingsButton.pressed.connect(_show_view.bind(settings_view))
+	$MainButtons/CreditsButton.pressed.connect(_show_view.bind(credits_view))
+	$SettingsView/BackButton.pressed.connect(_show_main)
+	$CreditsView/BackButton.pressed.connect(_show_main)
+	fullscreen_toggle.button_pressed = DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
+	fullscreen_toggle.toggled.connect(_on_fullscreen_toggled)
+	_show_main()
+
+func _show_main() -> void: # Menu
+	title_logo.visible = true
+	main_buttons.visible = true
+	settings_view.visible = false
+	credits_view.visible = false
+
+func _show_view(view: Control) -> void: # Settings + Credits Handler
+	title_logo.visible = false
+	main_buttons.visible = false
+	settings_view.visible = view == settings_view
+	credits_view.visible = view == credits_view
+	var scroll: ScrollContainer = view.get_node(\"Panel/Scroll\")
+	scroll.scroll_vertical = 0
+
+func _on_play_pressed() -> void: # Play Game
+	get_tree().change_scene_to_file(GAME_SCENE)
+
+func _on_fullscreen_toggled(enabled: bool) -> void: # Fullscreen Handler
+	if enabled:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+	else:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+"
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_yqeox"]
+load_path = "res://.godot/imported/menuBackground.png-0f4833e1b8fbd181cc86a99331275fe7.ctex"
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_vjb58"]
+load_path = "res://.godot/imported/titleLogo.png-b4ea478e34b40a0f7cdfc38a9bb450df.ctex"
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_con2f"]
+load_path = "res://.godot/imported/playDefault.png-54767c3accde6e0fa28542016afe2608.ctex"
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_mhnvy"]
+load_path = "res://.godot/imported/playPressed.png-4c02633cde584a310a9542a80acf0737.ctex"
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_4ytvr"]
+load_path = "res://.godot/imported/playHover.png-e5708c43d738f84e043cb850a0aceb80.ctex"
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_g3eks"]
+load_path = "res://.godot/imported/settingsNormal.png-f9df0ffe285ce0b0581aa78550a82731.ctex"
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_v86rl"]
+load_path = "res://.godot/imported/settingsPressed.png-449d589d36361472739b6b9a9b4cfa45.ctex"
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_13sgg"]
+load_path = "res://.godot/imported/settingsHover.png-e97bddefe2c8e53f631737d6abec7c2b.ctex"
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_i6lef"]
+load_path = "res://.godot/imported/creditsDefault.png-3e7ac85d88b653fbd6447fcc92503c19.ctex"
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_70i5f"]
+load_path = "res://.godot/imported/creditsPressed.png-b08d295895c64753dc94966b41d7cc85.ctex"
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_mj5lg"]
+load_path = "res://.godot/imported/creditsHover.png-98de887d2bc601f048beee087c77b1c8.ctex"
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_ufwb2"]
+load_path = "res://.godot/imported/settingsPanel.png-ba658911c1dead594e84b0998893ca70.ctex"
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_6cdou"]
+load_path = "res://.godot/imported/disabled.png-23450369e124873e5256cd9c9b089229.ctex"
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_i42df"]
+load_path = "res://.godot/imported/enabled.png-5056dbd450a2eaf1ff2c2a46a979c812.ctex"
 
 [sub_resource type="LabelSettings" id="LabelSettings_text"]
 font_size = 8
@@ -29,6 +100,15 @@ font_color = Color(0.231, 0.153, 0.129, 1)
 [sub_resource type="LabelSettings" id="LabelSettings_heading"]
 font_size = 9
 font_color = Color(0.549, 0.22, 0.173, 1)
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_mxgkd"]
+load_path = "res://.godot/imported/backDefault.png-e25958194027c68361bbcd43e10ea2b1.ctex"
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_g6gyw"]
+load_path = "res://.godot/imported/backPressed.png-47e216faf9f0a02fe88f3988de3e1405.ctex"
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_3dmrc"]
+load_path = "res://.godot/imported/backHover.png-0f5e49d15ccd694d35092bb4bdd3450b.ctex"
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_track"]
 bg_color = Color(0.231, 0.153, 0.129, 1)
@@ -78,6 +158,38 @@ corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
 
+[sub_resource type="GDScript" id="GDScript_81l6r"]
+script/source = "extends VScrollBar
+@export var target: ScrollContainer
+
+# Variables
+var _inner: VScrollBar
+
+# Functions
+func _ready() -> void: # Initiation Logic
+	_inner = target.get_v_scroll_bar()
+	_inner.changed.connect(_sync)
+	_inner.value_changed.connect(_on_inner_value_changed)
+	value_changed.connect(_on_value_changed)
+	_sync.call_deferred()
+
+func _sync() -> void: # Synchronization Logic
+	min_value = _inner.min_value
+	max_value = _inner.max_value
+	page = _inner.page
+	set_value_no_signal(_inner.value)
+
+# Functions - Value Changing
+func _on_inner_value_changed(new_value: float) -> void:
+	set_value_no_signal(new_value)
+
+func _on_value_changed(new_value: float) -> void:
+	target.scroll_vertical = int(round(new_value))
+"
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_rsfmq"]
+load_path = "res://.godot/imported/creditsPanel.png-38c4e21bebec0fcf43a5e980b6d73d9d.ctex"
+
 [node name="Menu" type="Control" unique_id=1937669800]
 layout_mode = 3
 anchors_preset = 15
@@ -87,61 +199,61 @@ offset_top = -2.0
 offset_bottom = -2.0
 grow_horizontal = 2
 grow_vertical = 2
-script = ExtResource("1_menu")
+script = SubResource("GDScript_4h3mk")
 
 [node name="Background" type="TextureRect" parent="." unique_id=229870844]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 4.0
-offset_top = 4.0
-offset_right = 4.0
-offset_bottom = 4.0
+offset_top = 3.0
+offset_bottom = 3.0
 grow_horizontal = 2
 grow_vertical = 2
-texture = ExtResource("3_bg")
+texture = SubResource("CompressedTexture2D_yqeox")
 expand_mode = 1
 
 [node name="TitleLogo" type="TextureRect" parent="." unique_id=1317463798]
 texture_filter = 2
 layout_mode = 1
-offset_left = 460.0
-offset_top = 216.0
-offset_right = 636.0
-offset_bottom = 316.0
-texture = ExtResource("4_logo")
+offset_left = 161.00002
+offset_top = 66.00001
+offset_right = 337.0
+offset_bottom = 166.0
+scale = Vector2(0.39496306, 0.40159985)
+texture = SubResource("CompressedTexture2D_vjb58")
 expand_mode = 1
 stretch_mode = 5
 
 [node name="MainButtons" type="VBoxContainer" parent="." unique_id=734468303]
 layout_mode = 1
-offset_left = 500.0
-offset_top = 322.0
-offset_right = 596.0
-offset_bottom = 406.0
+offset_left = 177.00002
+offset_top = 110.0
+offset_right = 273.0
+offset_bottom = 194.0
+scale = Vector2(0.39496306, 0.40159985)
 theme_override_constants/separation = 6
 
 [node name="PlayButton" type="TextureButton" parent="MainButtons" unique_id=282823676]
 layout_mode = 2
 size_flags_horizontal = 4
-texture_normal = ExtResource("5_play_n")
-texture_pressed = ExtResource("7_play_p")
-texture_hover = ExtResource("6_play_h")
+texture_normal = SubResource("CompressedTexture2D_con2f")
+texture_pressed = SubResource("CompressedTexture2D_mhnvy")
+texture_hover = SubResource("CompressedTexture2D_4ytvr")
 
 [node name="SettingsButton" type="TextureButton" parent="MainButtons" unique_id=760649106]
 layout_mode = 2
 size_flags_horizontal = 4
-texture_normal = ExtResource("8_set_n")
-texture_pressed = ExtResource("10_set_p")
-texture_hover = ExtResource("9_set_h")
+texture_normal = SubResource("CompressedTexture2D_g3eks")
+texture_pressed = SubResource("CompressedTexture2D_v86rl")
+texture_hover = SubResource("CompressedTexture2D_13sgg")
 
 [node name="CreditsButton" type="TextureButton" parent="MainButtons" unique_id=1321889813]
 layout_mode = 2
 size_flags_horizontal = 4
-texture_normal = ExtResource("11_cred_n")
-texture_pressed = ExtResource("13_cred_p")
-texture_hover = ExtResource("12_cred_h")
+texture_normal = SubResource("CompressedTexture2D_i6lef")
+texture_pressed = SubResource("CompressedTexture2D_70i5f")
+texture_hover = SubResource("CompressedTexture2D_mj5lg")
 
 [node name="SettingsView" type="Control" parent="." unique_id=139572569]
 visible = false
@@ -154,11 +266,12 @@ grow_vertical = 2
 
 [node name="Panel" type="TextureRect" parent="SettingsView" unique_id=558172323]
 layout_mode = 1
-offset_left = 431.0
-offset_top = 211.0
-offset_right = 671.0
-offset_bottom = 371.0
-texture = ExtResource("14_set_panel")
+offset_left = 101.99994
+offset_top = 69.0
+offset_right = 341.99994
+offset_bottom = 229.0
+scale = Vector2(0.48696566, 0.48587734)
+texture = SubResource("CompressedTexture2D_ufwb2")
 
 [node name="Scroll" type="ScrollContainer" parent="SettingsView/Panel" unique_id=1087529481]
 layout_mode = 1
@@ -182,8 +295,8 @@ theme_override_constants/separation = 6
 layout_mode = 2
 size_flags_vertical = 4
 toggle_mode = true
-texture_normal = ExtResource("16_off")
-texture_pressed = ExtResource("17_on")
+texture_normal = SubResource("CompressedTexture2D_6cdou")
+texture_pressed = SubResource("CompressedTexture2D_i42df")
 
 [node name="FullscreenLabel" type="Label" parent="SettingsView/Panel/Scroll/Content/FullscreenRow" unique_id=1941903948]
 layout_mode = 2
@@ -199,8 +312,8 @@ theme_override_constants/separation = 6
 layout_mode = 2
 size_flags_vertical = 4
 toggle_mode = true
-texture_normal = ExtResource("16_off")
-texture_pressed = ExtResource("17_on")
+texture_normal = SubResource("CompressedTexture2D_6cdou")
+texture_pressed = SubResource("CompressedTexture2D_i42df")
 
 [node name="SoundLabel" type="Label" parent="SettingsView/Panel/Scroll/Content/SoundRow" unique_id=1877568328]
 layout_mode = 2
@@ -221,33 +334,35 @@ horizontal_alignment = 1
 [node name="ControlsImage" type="TextureRect" parent="SettingsView/Panel/Scroll/Content" unique_id=490701753]
 custom_minimum_size = Vector2(0, 112)
 layout_mode = 2
-texture = ExtResource("18_placeholder")
+texture = ExtResource("1_yqeox")
 expand_mode = 1
 stretch_mode = 5
 
 [node name="BackButton" type="TextureButton" parent="SettingsView" unique_id=1958690386]
 layout_mode = 1
-offset_left = 679.0
-offset_top = 211.0
-offset_right = 743.0
-offset_bottom = 231.0
-texture_normal = ExtResource("19_back_n")
-texture_pressed = ExtResource("21_back_p")
-texture_hover = ExtResource("20_back_h")
+offset_left = 223.99998
+offset_top = 69.0
+offset_right = 288.0
+offset_bottom = 89.0
+scale = Vector2(0.48696566, 0.48587734)
+texture_normal = SubResource("CompressedTexture2D_mxgkd")
+texture_pressed = SubResource("CompressedTexture2D_g6gyw")
+texture_hover = SubResource("CompressedTexture2D_3dmrc")
 
 [node name="ScrollBar" type="VScrollBar" parent="SettingsView" unique_id=1384999381 node_paths=PackedStringArray("target")]
 custom_minimum_size = Vector2(16, 0)
 layout_mode = 1
-offset_left = 703.0
-offset_top = 237.0
-offset_right = 719.0
-offset_bottom = 371.0
+offset_left = 237.0
+offset_top = 81.0
+offset_right = 253.0
+offset_bottom = 215.0
+scale = Vector2(0.48696566, 0.48587734)
 theme_override_styles/scroll = SubResource("StyleBoxFlat_track")
 theme_override_styles/scroll_focus = SubResource("StyleBoxFlat_track")
 theme_override_styles/grabber = SubResource("StyleBoxFlat_grabber")
 theme_override_styles/grabber_highlight = SubResource("StyleBoxFlat_grabber_hover")
 theme_override_styles/grabber_pressed = SubResource("StyleBoxFlat_grabber_pressed")
-script = ExtResource("2_scroll")
+script = SubResource("GDScript_81l6r")
 target = NodePath("../Panel/Scroll")
 
 [node name="CreditsView" type="Control" parent="." unique_id=2119103479]
@@ -261,11 +376,12 @@ grow_vertical = 2
 
 [node name="Panel" type="TextureRect" parent="CreditsView" unique_id=1996327070]
 layout_mode = 1
-offset_left = 407.0
-offset_top = 218.0
-offset_right = 647.0
-offset_bottom = 378.0
-texture = ExtResource("15_cred_panel")
+offset_left = 96.0
+offset_top = 71.0
+offset_right = 336.0
+offset_bottom = 231.0
+scale = Vector2(0.6399951, 0.56)
+texture = SubResource("CompressedTexture2D_rsfmq")
 
 [node name="Scroll" type="ScrollContainer" parent="CreditsView/Panel" unique_id=1236906714]
 layout_mode = 1
@@ -292,25 +408,27 @@ autowrap_mode = 3
 
 [node name="BackButton" type="TextureButton" parent="CreditsView" unique_id=239251744]
 layout_mode = 1
-offset_left = 655.0
-offset_top = 218.0
-offset_right = 719.0
-offset_bottom = 238.0
-texture_normal = ExtResource("19_back_n")
-texture_pressed = ExtResource("21_back_p")
-texture_hover = ExtResource("20_back_h")
+offset_left = 254.00003
+offset_top = 72.000015
+offset_right = 318.00003
+offset_bottom = 92.000015
+scale = Vector2(0.6399951, 0.5376007)
+texture_normal = SubResource("CompressedTexture2D_mxgkd")
+texture_pressed = SubResource("CompressedTexture2D_g6gyw")
+texture_hover = SubResource("CompressedTexture2D_3dmrc")
 
 [node name="ScrollBar" type="VScrollBar" parent="CreditsView" unique_id=799846487 node_paths=PackedStringArray("target")]
 custom_minimum_size = Vector2(16, 0)
 layout_mode = 1
-offset_left = 679.0
-offset_top = 244.0
-offset_right = 695.0
-offset_bottom = 378.0
+offset_left = 267.99997
+offset_top = 89.000015
+offset_right = 283.99997
+offset_bottom = 223.00002
+scale = Vector2(0.6399951, 0.5376007)
 theme_override_styles/scroll = SubResource("StyleBoxFlat_track")
 theme_override_styles/scroll_focus = SubResource("StyleBoxFlat_track")
 theme_override_styles/grabber = SubResource("StyleBoxFlat_grabber")
 theme_override_styles/grabber_highlight = SubResource("StyleBoxFlat_grabber_hover")
 theme_override_styles/grabber_pressed = SubResource("StyleBoxFlat_grabber_pressed")
-script = ExtResource("2_scroll")
+script = SubResource("GDScript_81l6r")
 target = NodePath("../Panel/Scroll")
